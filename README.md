@@ -9,5 +9,5 @@ Feature ideas are always welcome, please create an issue for feature requests or
 
 ## python code
 I'm currently learning to code, my experience is limited to Powershell and bash scripts used for work (I'm a sysadmin).  
-The code is very, very messy. **Read it at your own risk, you have been warned.**  
+The code might be messy. **Read it at your own risk, you have been warned.**  
 I will refactor it at some point, eventually.
