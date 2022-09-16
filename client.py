@@ -35,7 +35,6 @@ def create_fish_db():
 
 
 def create_connection(db_file):
-    conn = None
     try:
         conn = sqlite3.connect(db_file)
         return conn
@@ -43,74 +42,105 @@ def create_connection(db_file):
         print(e)
 
 
-def get_catch(conn, catch):
-    sql = ''' SELECT * FROM catch
-                WHERE name = ? '''
+def get_catch_id(conn, catch_name):
+    sql = ''' SELECT catch_id 
+                FROM catch 
+                WHERE catch_name = ? '''
     cur = conn.cursor()
-    cur.execute(sql, (catch))
-    
+    cur.execute(sql, (catch_name,))
+
     rows = cur.fetchall()
-    return [x for i in rows for x in i] 
+    return [x for i in rows for x in i]
 
 
-def add_catch(conn, catch, catch_type):
-    sql = ''' INSERT INTO catch(name,type)
+def add_catch(conn, catch_name, catch_type_id):
+    sql = ''' INSERT INTO catch(catch_name,catch_type_id)
                 VALUES(?,?) '''
     cur = conn.cursor()
-    cur.execute(sql, (catch, catch_type))
+    cur.execute(sql, (catch_name, catch_type_id))
     conn.commit()
     return cur.lastrowid
 
 
-def get_catch_text(conn, catch):
-    sql = ''' SELECT text FROM catch_text
-                WHERE catch = ? '''
+def get_catch_type_id(conn, catch_type_name):
+    sql = ''' SELECT catch_type.catch_type_id
+                FROM catch_type
+                WHERE catch_type_name = ? '''
     cur = conn.cursor()
-    cur.execute(sql, (catch))
-    
+    cur.execute(sql, (catch_type_name,))
+
     rows = cur.fetchall()
-    return [x for i in rows for x in i] 
+    return [x for i in rows for x in i]
 
 
-def get_catch_type(conn, catch):
-    sql = ''' SELECT type FROM catch
-                WHERE name = ? '''
+def get_catch_type_name(conn, catch_name):
+    sql = ''' SELECT catch_type.catch_type_name 
+                FROM catch
+                JOIN catch_type ON catch_type.catch_type_id = catch.catch_type_id
+                WHERE catch_name = ? '''
     cur = conn.cursor()
-    cur.execute(sql, (catch))
-    
+    cur.execute(sql, (catch_name,))
+
     rows = cur.fetchall()
-    return [x for i in rows for x in i] 
+    return [x for i in rows for x in i]
+
+
+def get_text_catch(conn, catch_name):
+    sql = ''' SELECT text.text AS text 
+                FROM _text_catch
+                JOIN text ON _text_catch.text_id = text.text_id
+                JOIN catch ON _text_catch.catch_id = catch.catch_id
+                WHERE catch_name = ? '''
+    cur = conn.cursor()
+    cur.execute(sql, (catch_name,))
+
+    rows = cur.fetchall()
+    return [x for i in rows for x in i]
+
+
+def get_text_catch_type(conn, catch_type_name):
+    sql = ''' SELECT text.text AS text 
+                FROM _text_catch_type
+                JOIN text ON _text_catch_type.text_id = text.text_id
+                JOIN catch_type ON _text_catch_type.catch_type_id = catch_type.catch_type_id
+                WHERE catch_type_name = ? '''
+    cur = conn.cursor()
+    cur.execute(sql, (catch_type_name,))
+
+    rows = cur.fetchall()
+    return [x for i in rows for x in i]
 
 
 def get_combo(conn, guild, channel):
-    sql = ''' SELECT * FROM combo
+    sql = ''' SELECT * 
+                FROM combo
                 WHERE guild = ?
                     AND channel = ? '''
     cur = conn.cursor()
     cur.execute(sql, (guild, channel))
-    
+
     rows = cur.fetchall()
     return rows
 
 
-def create_combo(conn, guild, channel, catch, count):
-    sql = ''' INSERT INTO combo(guild,channel,catch,count)
+def create_combo(conn, guild, channel, catch_id, count):
+    sql = ''' INSERT INTO combo(guild,channel,catch_id,count)
                 VALUES(?,?,?,?) '''
     cur = conn.cursor()
-    cur.execute(sql, (guild, channel, catch, count))
+    cur.execute(sql, (guild, channel, catch_id, count))
     conn.commit()
     return cur.lastrowid
 
 
-def update_combo(conn, guild, channel, catch, count):
+def update_combo(conn, guild, channel, catch_id, count):
     sql = ''' UPDATE combo
                 SET count = ?,
-                    catch = ?
+                    catch_id = ?
                 WHERE
                     guild = ?
                     AND channel = ? '''
     cur = conn.cursor()
-    cur.execute(sql, (count, catch, guild, channel))
+    cur.execute(sql, (count, catch_id, guild, channel))
     conn.commit()
 
 
@@ -129,8 +159,9 @@ if not os.path.isfile('fish.db'):
 conn = create_connection('/'.join([basepath, 'fish.db']))
 
 
-### logging
-###########
+#
+# logging
+#
 
 # set up logging
 logger = logging.getLogger('discord')
@@ -140,8 +171,9 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 
 
-### bot
-##################
+#
+# bot
+#
 
 # load env vars from file
 load_dotenv()
@@ -156,11 +188,11 @@ client = discord.Client(intents=intents)
 
 
 # will be executed after login is finished
-@client.event 
+@client.event
 async def on_ready():
     print(f'{client.user} is connected to the following guilds:')
     for guild in client.guilds:
-        print(f'name: {guild.name} (id: {guild.id})') 
+        print(f'name: {guild.name} (id: {guild.id})')
 
 
 # will be executed on every received message
@@ -171,84 +203,105 @@ async def on_message(message):
         return
 
     # match messages from bot Tatsumaki
-    if message.author.id == 172002275412279296:
-        
-        ### delete Tatsu vote spam
-        ##########################
+    # if message.author.id == 172002275412279296:
+    if message.guild.id == 451856527817441301:
+        print("message received")
+        #
+        # delete Tatsu vote spam
+        #
 
         # loop over every embed in the message
         for embed in message.embeds:
             # delete message if it matches the criteria
-            if re.search('You have `\d+` votes available! \*\*Type `t!vote` for more details\.', embed.title):
-                print(f'delete message {message.id} from user {message.author.name} in channel #{message.channel.name} of server {message.guild.name}')
-                await message.delete()
-                break
-        
-            if re.search('Earn rewards by voting for Tatsu!', embed.description):
-                print(f'delete message {message.id} from user {message.author.name} in channel #{message.channel.name} of server {message.guild.name}')
+            if (re.search(r'You have `\d+` votes available! \*\*Type `t!vote` for more details\.', embed.title)
+                    or re.search('Earn rewards by voting for Tatsu!', embed.description)):
+                print(
+                    f'delete message {message.id} from user {message.author.name} in channel #{message.channel.name} of'
+                    f' server {message.guild.name}')
                 await message.delete()
                 break
 
-
-        ### fishing combo stuff
-        #######################
+        #
+        # fishing combo stuff
+        #
 
         if "🎣  **|**  **you caught: " in message.content:
-            result = re.search("🎣  \*\*\|\*\*  \*\*you caught: (.+)!\*\*", message.content)
+            result = re.search(r"🎣 {2}\*\*\|\*\* {2}\*\*you caught: (.+)!\*\*", message.content)
             guild = message.guild.id
             channel = message.channel.id
-            catch = result.group(1)
+            catch_name = result.group(1).strip()
+            print(f"catch: {catch_name}")
             # fisher = message.author.name
-            
+
             global conn
 
-            if get_catch(conn, catch):
-                catch_type = get_catch_type(conn, catch)[0]
+            catch_id = get_catch_id(conn, catch_name)
+            if len(catch_id) == 1:
+                catch_id = catch_id[0]
+            print(f"""catch_id: {catch_id if catch_id else "doesn't exist"}""")
+            if catch_id:
+                catch_type_name = get_catch_type_name(conn, catch_name)[0]
+                print(f"catch_type_name: {catch_type_name}")
 
-                if catch_type == "rare":
-                    text = get_catch_text(conn, catch)
-                    response = f"""{catch} rare - {str(text[randint(0, len(text) - 1)])}"""
+                if catch_type_name == "rare":
+                    text = get_text_catch_type(conn, catch_type_name)
+                    response = f"""{catch_name} {catch_type_name} - {str(text[randint(0, len(text) - 1)])}"""
                     await client.get_channel(channel).send(response)
-                    
+
                     combo = get_combo(conn, guild, channel)
                     if combo:
                         delete_combo(conn, guild, channel)
-                elif catch_type == "normal":
+                        print("combo deleted")
+                elif catch_type_name == "normal" or catch_type_name == "trash":
                     # combo stuff
                     combo = get_combo(conn, guild, channel)
-                    if combo and combo[0][2] == catch:
-                        count = combo[0][3] + 1
+                    print(f"previous combo: {combo}")
+                    if combo:
+                        print(
+                            f"0: {combo[0][0]}"
+                            f"1: {combo[0][1]}"
+                            f"2: {combo[0][2]}"
+                            f"3: {combo[0][3]}"
+                            f"4: {combo[0][4]}")
+                    if combo and combo[0][3] == catch_id:
+                        count = combo[0][4] + 1
                         if count == 3:
                             # combo reached, send message and delete the combo
-                            text = get_catch_text(conn, catch)
+                            text = get_text_catch(conn, catch_name) + get_text_catch_type(conn, catch_type_name)
                             if len(text) > 1:
-                                response = f"""{catch} combo - {str(text[randint(0, len(text) - 1)])}"""
+                                response = f"""{catch_name} combo - {str(text[randint(0, len(text) - 1)])}"""
                             elif len(text) == 1:
-                                response = f"""{catch} combo - {text[0]}"""
+                                response = f"""{catch_name} combo - {text[0]}"""
                             else:
-                                response = f"""{catch} combo - text not defined"""
+                                response = f"""{catch_name} combo - text not defined"""
                             await client.get_channel(channel).send(response)
                             delete_combo(conn, guild, channel)
                         else:
-                            update_combo(conn, guild, channel, catch, count)
-                    elif combo and combo[0][2] != catch:
+                            update_combo(conn, guild, channel, catch_id, count)
+                            print("combo updated")
+                    elif combo and combo[0][3] != catch_id:
                         count = 1
-                        update_combo(conn, guild, channel, catch, count)
-                    else: 
+                        update_combo(conn, guild, channel, catch_id, count)
+                        print("combo reset")
+                    else:
                         count = 1
-                        create_combo(conn, guild, channel, catch, count)
+                        create_combo(conn, guild, channel, catch_id, count)
+                        print("combo created")
                 else:
-                    await client.get_channel(channel).send(f"{catch} - action for type {catch_type} not implemented.")
+                    await client.get_channel(channel).send(
+                        f"{catch_name} - action for type {catch_type_name} not implemented.")
             else:
-                catch_type = "undefined"
-                add_catch(conn, catch, catch_type)
-                await client.get_channel(channel).send(f"{catch} - added to database, type currently undefined.")
-
+                catch_type_name = "undefined"
+                catch_type_id = get_catch_type_id(conn, catch_type_name)
+                if len(catch_type_id) == 1:
+                    catch_type_id = catch_type_id[0]
+                add_catch(conn, catch_name, catch_type_id)
+                await client.get_channel(channel).send(f"{catch_name} - added to database, type currently undefined.")
 
 
 # write message errors into another file
 @client.event
-async def on_error(event, *args, **kwargs):
+async def on_error(event, *args):
     with open('err.log', 'a') as f:
         if event == 'on_message':
             f.write(f'Unhandled message: {args[0]}\n')
