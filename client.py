@@ -203,8 +203,8 @@ async def on_message(message):
         return
 
     # match messages from bot Tatsumaki
-    # if message.author.id == 172002275412279296:
-    if message.guild.id == 451856527817441301:
+    if message.author.id == 172002275412279296:
+    # if message.guild.id == 451856527817441301:
         print("message received")
         #
         # delete Tatsu vote spam
@@ -243,7 +243,7 @@ async def on_message(message):
                 catch_type_name = get_catch_type_name(conn, catch_name)[0]
                 print(f"catch_type_name: {catch_type_name}")
 
-                if catch_type_name == "rare":
+                if catch_type_name == "rare" or catch_type_name == "special":
                     text = get_text_catch_type(conn, catch_type_name)
                     response = f"""{catch_name} {catch_type_name} - {str(text[randint(0, len(text) - 1)])}"""
                     await client.get_channel(channel).send(response)
