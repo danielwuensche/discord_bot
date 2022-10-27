@@ -243,7 +243,7 @@ async def on_message(message):
                 catch_type_name = get_catch_type_name(conn, catch_name)[0]
                 print(f"catch_type_name: {catch_type_name}")
 
-                if catch_type_name == "rare" or catch_type_name == "special":
+                if catch_type_name == "rare":
                     text = get_text_catch_type(conn, catch_type_name)
                     response = f"""{catch_name} {catch_type_name} - {str(text[randint(0, len(text) - 1)])}"""
                     await client.get_channel(channel).send(response)
@@ -252,7 +252,7 @@ async def on_message(message):
                     if combo:
                         delete_combo(conn, guild, channel)
                         print("combo deleted")
-                elif catch_type_name == "normal" or catch_type_name == "trash":
+                elif catch_type_name == "normal" or catch_type_name == "trash" or catch_type_name == "special":
                     # combo stuff
                     combo = get_combo(conn, guild, channel)
                     print(f"previous combo: {combo}")
