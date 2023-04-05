@@ -8,7 +8,7 @@
 # bot stuff
 import os
 import discord
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 # logging stuff
 import logging
@@ -176,8 +176,15 @@ logger.addHandler(handler)
 #
 
 # load env vars from file
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+config = dotenv_values(".env")
+token = config['DISCORD_TOKEN']
+
+if 'VERBOSE' in config.keys() and config['VERBOSE'] == "yes":
+    verbose = True 
+    print('verbose output enabled.')
+else:
+    verbose = False
+
 
 # gateway permissions
 intents = discord.Intents().all()
@@ -204,8 +211,9 @@ async def on_message(message):
 
     # match messages from bot Tatsumaki
     if message.author.id == 172002275412279296:
-    # if message.guild.id == 451856527817441301:
-        print("message received")
+        if verbose:
+            print("message received")
+            
         #
         # delete Tatsu vote spam
         #
@@ -230,7 +238,8 @@ async def on_message(message):
             guild = message.guild.id
             channel = message.channel.id
             catch_name = result.group(1).strip()
-            print(f"catch: {catch_name}")
+            if verbose:
+                print(f"catch: {catch_name}")
             # fisher = message.author.name
 
             global conn
@@ -238,10 +247,12 @@ async def on_message(message):
             catch_id = get_catch_id(conn, catch_name)
             if len(catch_id) == 1:
                 catch_id = catch_id[0]
-            print(f"""catch_id: {catch_id if catch_id else "doesn't exist"}""")
+            if verbose:
+                print(f"""catch_id: {catch_id if catch_id else "doesn't exist"}""")
             if catch_id:
                 catch_type_name = get_catch_type_name(conn, catch_name)[0]
-                print(f"catch_type_name: {catch_type_name}")
+                if verbose:
+                    print(f"catch_type_name: {catch_type_name}")
 
                 if catch_type_name == "rare":
                     text = get_text_catch_type(conn, catch_type_name)
@@ -251,18 +262,21 @@ async def on_message(message):
                     combo = get_combo(conn, guild, channel)
                     if combo:
                         delete_combo(conn, guild, channel)
-                        print("combo deleted")
+                        if verbose:
+                            print("combo deleted")
                 elif catch_type_name == "normal" or catch_type_name == "trash" or catch_type_name == "special":
                     # combo stuff
                     combo = get_combo(conn, guild, channel)
-                    print(f"previous combo: {combo}")
+                    if verbose:
+                        print(f"previous combo: {combo}")
                     if combo:
-                        print(
-                            f"0: {combo[0][0]}"
-                            f"1: {combo[0][1]}"
-                            f"2: {combo[0][2]}"
-                            f"3: {combo[0][3]}"
-                            f"4: {combo[0][4]}")
+                        if verbose:
+                            print(
+                                f"0: {combo[0][0]}"
+                                f"1: {combo[0][1]}"
+                                f"2: {combo[0][2]}"
+                                f"3: {combo[0][3]}"
+                                f"4: {combo[0][4]}")
                     if combo and combo[0][3] == catch_id:
                         count = combo[0][4] + 1
                         if count == 3:
@@ -278,15 +292,18 @@ async def on_message(message):
                             delete_combo(conn, guild, channel)
                         else:
                             update_combo(conn, guild, channel, catch_id, count)
-                            print("combo updated")
+                            if verbose:
+                                print("combo updated")
                     elif combo and combo[0][3] != catch_id:
                         count = 1
                         update_combo(conn, guild, channel, catch_id, count)
-                        print("combo reset")
+                        if verbose:
+                            print("combo reset")
                     else:
                         count = 1
                         create_combo(conn, guild, channel, catch_id, count)
-                        print("combo created")
+                        if verbose:
+                            print("combo created")
                 else:
                     await client.get_channel(channel).send(
                         f"{catch_name} - action for type {catch_type_name} not implemented.")
@@ -308,4 +325,4 @@ async def on_error(event, *args):
         else:
             raise
 
-client.run(TOKEN)
+client.run(token)
